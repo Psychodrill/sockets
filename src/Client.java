@@ -4,11 +4,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
-import java.util.ArrayList;
+import java.util.*;
 
 public class Client {
 
-        private Socket socket;
+    private Socket socket;
     private BufferedReader bfReader;
     private BufferedWriter bfWriter;
     private String name;
@@ -28,8 +28,45 @@ public class Client {
         }
     }
 
+    public void sendMessage(){
+        try{
+            bfWriter.write(name);
+            bfWriter.newLine();
+            bfWriter.flush();
+
+            Scanner scanner = new Scanner(System.in);
+            while(socket.isConnected()){
+                String message = scanner.nextLine();
+                bfWriter.write(name+ ": "+ message);
+                bfWriter.newLine();
+                bfWriter.flush();
+            }
+        }catch(IOException e){
+            closeEverything(socket, bfReader, bfWriter);
+        }
+
+    }
+
+    public void listenForMessage(){
+        new Thread(new Runnable(){
+            @Override
+            public void run(){
+                String messageFromGroup;
+                while(socket.isConnected()){
+                    try{
+                        messageFromGroup=bfReader.readLine();
+                        System.out.println(messageFromGroup);
+                    }catch(IOException e){
+                        closeEverything(socket, bfReader, bfWriter);
+                    }
+                }
+            }
+        }).start();
+    }
+
+
     private void closeEverything(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter){
-        removeClient();
+
         try{
             if(bufferedReader!=null){
                 bufferedReader.close();
@@ -45,8 +82,14 @@ public class Client {
             e.printStackTrace();
         }
     }
-    public void removeClient(){
-        clients.remove(this);
-        broadCastMessage("Server: "+ name+" has been disconnected");
+
+    public static void main(String[] args)throws IOException{
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Input your name: ");
+        String name = scanner.nextLine();
+        Socket socket = new Socket("localhost",1300);
+        Client client = new Client(socket, name);
+        client.listenForMessage();
+        client.sendMessage();
     }
 }
